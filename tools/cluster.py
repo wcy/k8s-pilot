@@ -2,15 +2,13 @@ import os
 
 import yaml
 
+from core.kubeconfig import get_kubeconfig
 from server.server import mcp
 
 
 @mcp.tool()
 def get_clusters():
-    kubeconfig_path = os.path.expanduser("~/.kube/config")
-    with open(kubeconfig_path, "r") as f:
-        config_data = yaml.safe_load(f)
-
+    config_data = get_kubeconfig()
     current_context = config_data.get("current-context")
     contexts = config_data.get("contexts", [])
 
@@ -23,10 +21,7 @@ def get_clusters():
 
 @mcp.tool()
 def get_current_cluster():
-    kubeconfig_path = os.path.expanduser("~/.kube/config")
-    with open(kubeconfig_path, "r") as f:
-        config_data = yaml.safe_load(f)
-
+    config_data = get_kubeconfig()
     current_context = config_data.get("current-context")
     contexts = config_data.get("contexts", [])
 
@@ -38,3 +33,4 @@ def get_current_cluster():
                 "user": ctx["context"].get("user"),
             }
     return None
+
