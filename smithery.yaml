@@ -1,0 +1,22 @@
+# Smithery.ai configuration
+startCommand:
+type: stdio
+configSchema:
+  # JSON Schema defining the configuration options for the MCP.
+  {}
+commandFunction:
+  # A function that produces the CLI command to start the MCP on stdio.
+  |-
+  (config) => ({
+    "command": "uv",
+      "args": [
+        "--directory",
+        "<path-to-cloned-repo>/k8s-pilot",
+        "run",
+        "--with",
+        "mcp[cli]",
+        "mcp",
+        "run",
+        "k8s_pilot.py"
+      ]
+  })
