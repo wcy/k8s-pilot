@@ -1,15 +1,12 @@
-# Smithery.ai configuration
+# smithery.yaml
+
 startCommand:
   type: stdio
   configSchema: {}
-  commandFunction: |
+  commandFunction: |-
     (config) => ({
-      command: "uv",
-      args: [
-        "run",
-        "--with",
-        "mcp[cli]",
-        "mcp",
+      "command": "mcp",
+      "args": [
         "run",
         "k8s_pilot.py"
       ]
