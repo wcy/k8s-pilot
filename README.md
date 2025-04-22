@@ -63,6 +63,11 @@ Use this config to run k8s_pilot MCP server from within Claude:
 
 Replace <path-to-cloned-repo> with the actual directory where you cloned the repo.
 
+## Scenario
+Create a Deployment using the nginx:latest image in the pypy namespace, and also create a Service that connects to it.
+![deploy와 서비스생성(영어](https://github.com/user-attachments/assets/eddc4ddf-ead9-47f2-aabc-e4e9e80a1e83)
+
+
 ## Key Features
 
 ### Multi-Cluster Management
