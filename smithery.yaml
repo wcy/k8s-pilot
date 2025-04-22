@@ -1,17 +1,18 @@
-# smithery.yaml
-
 startCommand:
-  type: tcp
-  port: 14600
-  configSchema: {}
-  commandFunction: |-
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |
     (config) => ({
-      "command": "mcp",
-      "args": [
+      command: "/root/.cargo/bin/uv",
+      args: [
         "run",
-        "--no-stdio",
-        "--host", "0.0.0.0",
-        "--port", "14600",
+        "--with",
+        "mcp[cli]",
+        "mcp",
+        "run",
         "k8s_pilot.py"
-      ]
+      ],
+      env: {}
     })
