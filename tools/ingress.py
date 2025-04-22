@@ -1,4 +1,5 @@
-from kubernetes.client import NetworkingV1Api, V1Ingress, V1ObjectMeta, V1IngressSpec, V1IngressRule, V1HTTPIngressRuleValue, V1HTTPIngressPath, V1IngressBackend, V1ServiceBackend
+from kubernetes.client import NetworkingV1Api, V1Ingress, V1ObjectMeta, V1IngressSpec, V1IngressRule, \
+    V1HTTPIngressRuleValue, V1HTTPIngressPath, V1IngressBackend
 from core.context import use_current_context
 from core.kubeconfig import get_api_clients
 from server.server import mcp
@@ -53,10 +54,7 @@ def ingress_create(context_name: str, namespace: str, name: str, host: str, serv
                                 path="/",
                                 path_type="Prefix",
                                 backend=V1IngressBackend(
-                                    service=V1ServiceBackend(
-                                        name=service_name,
-                                        port={"number": service_port}
-                                    )
+                                    service={"name": service_name, "port": {"number": service_port}}
                                 )
                             )
                         ]
