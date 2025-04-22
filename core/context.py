@@ -1,3 +1,4 @@
+import inspect
 from functools import wraps
 from typing import Callable
 
@@ -57,12 +58,14 @@ def use_current_context(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        # 'context_name'이 kwargs에 없거나 None인 경우 현재 context 사용
-        if 'context_name' not in kwargs or kwargs['context_name'] is None:
-            kwargs['context_name'] = get_current_context_name()
-        context_name = kwargs['context_name']
-        if 'namespace' not in kwargs or kwargs['namespace'] is None:
-            kwargs['namespace'] = get_default_namespace(context_name)
+        sig = inspect.signature(func)
+        if 'context_name' in sig.parameters:
+            if 'context_name' not in kwargs or kwargs['context_name'] is None:
+                kwargs['context_name'] = get_current_context_name()
+            context_name = kwargs['context_name']
+            if 'namespace' in sig.parameters:
+                if 'namespace' not in kwargs or kwargs['namespace'] is None:
+                    kwargs['namespace'] = get_default_namespace(context_name)
 
         return func(*args, **kwargs)
 

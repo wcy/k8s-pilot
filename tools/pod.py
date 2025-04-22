@@ -41,12 +41,134 @@ def pod_detail(context_name: str, namespace: str, name: str):
     """
     core_v1: CoreV1Api = get_api_clients(context_name)["core"]
     pod = core_v1.read_namespaced_pod(name, namespace)
+
+    containers = []
+    for c in pod.spec.containers:
+        container_info = {
+            "name": c.name,
+            "image": c.image,
+            "ports": [{"container_port": p.container_port, "protocol": p.protocol} for p in (c.ports or [])],
+            "resources": {
+                "requests": c.resources.requests if c.resources and hasattr(c.resources, "requests") else {},
+                "limits": c.resources.limits if c.resources and hasattr(c.resources, "limits") else {}
+            },
+            "environment": [{"name": env.name, "value": env.value if hasattr(env, "value") else "from secret"}
+                            for env in (c.env or [])]
+        }
+        containers.append(container_info)
+
+    volumes = []
+    if pod.spec.volumes:
+        for vol in pod.spec.volumes:
+            volume_info = {"name": vol.name}
+            # 볼륨 타입 확인 및 정보 추가
+            if hasattr(vol, "config_map") and vol.config_map:
+                volume_info["type"] = "configMap"
+                volume_info["config_map_name"] = vol.config_map.name
+            elif hasattr(vol, "secret") and vol.secret:
+                volume_info["type"] = "secret"
+                volume_info["secret_name"] = vol.secret.secret_name
+            elif hasattr(vol, "persistent_volume_claim") and vol.persistent_volume_claim:
+                volume_info["type"] = "pvc"
+                volume_info["claim_name"] = vol.persistent_volume_claim.claim_name
+            elif hasattr(vol, "host_path") and vol.host_path:
+                volume_info["type"] = "hostPath"
+                volume_info["path"] = vol.host_path.path
+            elif hasattr(vol, "empty_dir") and vol.empty_dir:
+                volume_info["type"] = "emptyDir"
+            else:
+                volume_info["type"] = "other"
+            volumes.append(volume_info)
+
+    conditions = []
+    if pod.status.conditions:
+        for condition in pod.status.conditions:
+            conditions.append({
+                "type": condition.type,
+                "status": condition.status,
+                "last_transition_time": condition.last_transition_time,
+                "reason": condition.reason,
+                "message": condition.message
+            })
+
+    networking = {
+        "pod_ip": pod.status.pod_ip,
+        "host_ip": pod.status.host_ip,
+        "node_name": pod.spec.node_name
+    }
+
+    metadata = {
+        "creation_timestamp": pod.metadata.creation_timestamp,
+        "labels": pod.metadata.labels or {},
+        "annotations": pod.metadata.annotations or {},
+        "owner_references": [{
+            "kind": ref.kind,
+            "name": ref.name,
+            "uid": ref.uid
+        } for ref in (pod.metadata.owner_references or [])]
+    }
+
+    status_info = {
+        "phase": pod.status.phase,
+        "start_time": pod.status.start_time,
+        "container_statuses": []
+    }
+
+    if pod.status.container_statuses:
+        for cs in pod.status.container_statuses:
+            container_status = {
+                "name": cs.name,
+                "ready": cs.ready,
+                "restart_count": cs.restart_count,
+                "image": cs.image,
+                "image_id": cs.image_id,
+                "container_id": cs.container_id
+            }
+
+            if cs.state:
+                state_info = {}
+                if hasattr(cs.state, "running") and cs.state.running:
+                    state_info["current"] = "running"
+                    state_info["started_at"] = cs.state.running.started_at
+                elif hasattr(cs.state, "waiting") and cs.state.waiting:
+                    state_info["current"] = "waiting"
+                    state_info["reason"] = cs.state.waiting.reason
+                    state_info["message"] = cs.state.waiting.message
+                elif hasattr(cs.state, "terminated") and cs.state.terminated:
+                    state_info["current"] = "terminated"
+                    state_info["exit_code"] = cs.state.terminated.exit_code
+                    state_info["reason"] = cs.state.terminated.reason
+                    state_info["message"] = cs.state.terminated.message
+                    state_info["started_at"] = cs.state.terminated.started_at
+                    state_info["finished_at"] = cs.state.terminated.finished_at
+
+                container_status["state"] = state_info
+
+            status_info["container_statuses"].append(container_status)
+
     result = {
         "name": pod.metadata.name,
         "namespace": pod.metadata.namespace,
-        "status": pod.status.phase,
-        "containers": [{"name": c.name, "image": c.image} for c in pod.spec.containers],
+        "status": status_info,
+        "spec": {
+            "containers": containers,
+            "volumes": volumes,
+            "restart_policy": pod.spec.restart_policy,
+            "service_account": pod.spec.service_account,
+            "dns_policy": pod.spec.dns_policy,
+            "node_selector": pod.spec.node_selector or {},
+            "tolerations": [{
+                "key": t.key,
+                "operator": t.operator,
+                "effect": t.effect,
+                "toleration_seconds": t.toleration_seconds
+            } for t in (pod.spec.tolerations or [])]
+        },
+        "metadata": metadata,
+        "networking": networking,
+        "conditions": conditions
     }
+
     return result
 
 
@@ -173,20 +295,36 @@ def pod_delete(context_name: str, namespace: str, name: str):
     """
     core_v1: CoreV1Api = get_api_clients(context_name)["core"]
 
-    # Delete the pod
-    api_response = core_v1.delete_namespaced_pod(
-        name=name,
-        namespace=namespace,
-        body={}  # Default deletion options
-    )
+    try:
+        # Delete the pod
+        api_response = core_v1.delete_namespaced_pod(
+            name=name,
+            namespace=namespace,
+            body={}  # Default deletion options
+        )
 
-    result = {
-        "name": name,
-        "namespace": namespace,
-        "status": "Deleted",
-        "message": f"Pod {name} deleted successfully"
-    }
-    return result
+        # Check if the response indicates success
+        if api_response.status == "Success":
+            return {
+                "name": name,
+                "namespace": namespace,
+                "status": "Deleted",
+                "message": f"Pod {name} deleted successfully"
+            }
+        else:
+            return {
+                "name": name,
+                "namespace": namespace,
+                "status": "Failed",
+                "message": f"Failed to delete pod {name}: {api_response.status}"
+            }
+    except Exception as e:
+        return {
+            "name": name,
+            "namespace": namespace,
+            "status": "Error",
+            "message": f"An error occurred while deleting pod {name}: {str(e)}"
+        }
 
 
 @mcp.tool()
