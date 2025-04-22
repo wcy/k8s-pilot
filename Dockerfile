@@ -1,16 +1,17 @@
 FROM python:3.13-slim
 
-RUN apt-get update && \
-    apt-get install -y gcc build-essential curl && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
+# set working directory
 WORKDIR /app
 
-COPY . .
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev linux-headers
 
-RUN /root/.cargo/bin/uv pip install --upgrade pip && \
-    /root/.cargo/bin/uv pip install -e .[cli]
+# Copy project files
+COPY . /app
 
-CMD ["/root/.cargo/bin/uv", "run", "--with", "mcp[cli]", "mcp", "run", "k8s_pilot.py"]
+# Install pip dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Start the MCP server
+CMD ["python", "k8s_pilot.py"]
