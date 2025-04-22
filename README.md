@@ -1,4 +1,5 @@
 # k8s-pilot
+[![smithery badge](https://smithery.ai/badge/@bourbonkk/k8s-pilot)](https://smithery.ai/server/@bourbonkk/k8s-pilot)
 
 **The Central Pilot for Your Kubernetes Fleets ✈️✈️**
 
