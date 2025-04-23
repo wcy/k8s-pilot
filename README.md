@@ -27,6 +27,11 @@ With powerful tools and intuitive APIs, you can observe and control all your clu
 
 ```bash
 # Install uv (if not installed)
+
+# For MacOS
+brew install uv
+
+# For Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
